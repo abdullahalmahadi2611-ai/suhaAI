@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BUET Archi Lab - Virtual Assistant (Final)</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600&display=swap');
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Hind+Siliguri', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            width: 450px;
+            height: 700px;
+            background-color: #1e1e1e;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        /* Login Screen */
+        #login-screen {
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; height: 100%; padding: 20px; text-align: center;
+        }
+        #login-screen h2 { margin-bottom: 10px; }
+        #login-screen p { margin-bottom: 30px; color: #aaa; }
+        #signin-btn {
+            background-color: #4285F4; color: white; padding: 12px 24px; border: none;
+            border-radius: 5px; font-size: 16px; cursor: pointer; display: flex;
+            align-items: center; gap: 10px; transition: background-color 0.3s;
+        }
+        #signin-btn:hover { background-color: #357ae8; }
+
+        /* Chat Interface */
+        #chat-interface { flex-grow: 1; display: flex; flex-direction: column; }
+        .chat-header { background-color: #004d40; padding: 15px; text-align: center; border-bottom: 1px solid #00796b; }
+        .chat-header h2 { margin: 0; font-size: 1.5em; color: #ffffff; }
+        .chat-header p { margin: 5px 0 0; font-size: 0.8em; color: #b2dfdb; }
+        #chat-box { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
+        .message { max-width: 75%; padding: 12px 18px; border-radius: 20px; margin-bottom: 15px; line-height: 1.5; }
+        .user-message { background-color: #00796b; color: #ffffff; align-self: flex-end; border-bottom-right-radius: 5px; }
+        .bot-message { background-color: #333; color: #e0e0e0; align-self: flex-start; border-bottom-left-radius: 5px; }
+        
+        #chat-form { display: flex; padding: 20px; border-top: 1px solid #333; align-items: center; }
+        #user-input { flex-grow: 1; border: none; padding: 12px; border-radius: 25px; background-color: #333; color: #e0e0e0; font-size: 1em; }
+        
+        .mic-button, .send-button {
+            background-color: #00796b; color: white; border: none;
+            width: 50px; height: 50px; margin-left: 10px; border-radius: 50%;
+            cursor: pointer; font-size: 1.5em; transition: background-color 0.3s;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .mic-button.listening { background-color: #ff4500; }
+        .send-button:hover, .mic-button:hover { background-color: #004d40; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="login-screen">
+            <img src="https://tse4.mm.bing.net/th/id/OIP.ztLTdMoKFtwZZrBiV39tCQHaHa?w=1000&h=1000&rs=1&pid=ImgDetMain&o=7&rm=3" alt="Suha AI logo featuring a stylized smiling face in a circular frame with a soft and friendly expression, set against a plain white background, no visible text" width="120" style="border-radius: 50%; margin-bottom: 20px;">
+            <h2>Suha AI</h2>
+            <p>শুরু করার জন্য, অনুগ্রহ করে আপনার গুগল অ্যাকাউন্ট দিয়ে সাইন ইন করুন।</p>
+            <button id="signin-btn">
+                <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="white" d="M488 261.8C488 403.3 381.5 512 244 512 109.8 512 0 402.2 0 261.8 0 120.5 109.8 8.4 244 8.4c77.9 0 144.5 41.1 185.3 104.1l-85.3 64.4c-17.2-16.5-50.9-35.7-99.9-35.7-81.8 0-148.4 65.6-148.4 149.3 0 83.7 66.6 149.3 148.4 149.3 95.8 0 125.7-71.1 131.1-103.7H244v-90.9h239.3c5.2 27.8 8.7 59.8 8.7 94.1z"/></svg>
+                <span>Sign in with Google</span>
+            </button>
+        </div>
+
+        <div id="chat-interface" style="display: none;">
+            <div class="chat-header">
+                <h2>Virtual Assistant</h2>
+                <p>Inventor: BUET Archi Lab | System: Mahadi's PC</p>
+            </div>
+            <div id="chat-box"></div>
+            <form id="chat-form">
+                <input type="text" id="user-input" placeholder="এখানে লিখুন বা মাইক্রোফোনে বলুন..." autocomplete="off">
+                <button type="button" id="mic-btn" class="mic-button">🎤</button>
+                <button type="submit" class="send-button">➤</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- আপনার নিজের Client ID এবং Project ID এখানে দিন ---
+        const CLIENT_ID = '891684637974-gqp8ktfbov7oupo4ioase7m01j5h3pgl.apps.googleusercontent.com'; // Client ID টি এখানে পেস্ট করুন
+        const PROJECT_ID = '891684637974';     // Project ID টি এখানে দিন
+
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatBox = document.getElementById('chat-box');
+        const signinBtn = document.getElementById('signin-btn');
+        const loginScreen = document.getElementById('login-screen');
+        const chatInterface = document.getElementById('chat-interface');
+        const micBtn = document.getElementById('mic-btn');
+        
+        let tokenClient;
+        let accessToken = null;
+
+        // --- Google Authentication Setup ---
+        window.onload = () => {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: 'https://www.googleapis.com/auth/cloud-platform',
+                callback: (tokenResponse) => {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        accessToken = tokenResponse.access_token;
+                        loginScreen.style.display = 'none';
+                        chatInterface.style.display = 'flex';
+                        displayMessage("স্বাগতম! আমি আপনার ভার্চুয়াল সহকারী। এখন প্রশ্ন করতে পারেন।", 'bot-message');
+                    }
+                },
+            });
+        };
+
+        signinBtn.onclick = () => {
+            tokenClient.requestAccessToken();
+        };
+
+        // --- Chat Functionality ---
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userMessage = userInput.value.trim();
+            if (userMessage === '') return;
+            
+            displayMessage(userMessage, 'user-message');
+            userInput.value = '';
+
+            try {
+                const botResponse = await getGeminiResponse(userMessage);
+                displayMessage(botResponse, 'bot-message');
+            } catch (error) {
+                console.error('Error calling Gemini API:', error);
+                displayMessage("দুঃখিত, API সংযোগে একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।", 'bot-message');
+            }
+        });
+
+        function displayMessage(message, className) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', className);
+            messageElement.textContent = message;
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // --- Call Gemini API with OAuth 2.0 Token ---
+        async function getGeminiResponse(prompt) {
+            if (!accessToken || !PROJECT_ID) {
+                throw new Error("Authentication error or Project ID missing.");
+            }
+            
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent`;
+
+            const requestBody = {
+                contents: [{
+                    parts: [{ text: `Please answer the following question in Bengali: ${prompt}` }]
+                }]
+            };
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                    'x-goog-user-project': PROJECT_ID
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json();
+                console.error("API Error Response:", errorBody);
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text.trim();
+        }
+
+        // --- Voice Chat (Speech Recognition) ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'bn-BD';
+            recognition.interimResults = false;
+
+            micBtn.addEventListener('click', () => {
+                recognition.start();
+            });
+
+            recognition.onstart = () => {
+                micBtn.classList.add('listening');
+                micBtn.textContent = '…';
+            };
+
+            recognition.onend = () => {
+                micBtn.classList.remove('listening');
+                micBtn.textContent = '🎤';
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                userInput.value = transcript;
+                // Automatically submit the form
+                chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                micBtn.classList.remove('listening');
+                micBtn.textContent = '🎤';
+            };
+        } else {
+            console.error("Speech Recognition not supported in this browser.");
+            micBtn.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
